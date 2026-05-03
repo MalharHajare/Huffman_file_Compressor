@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Huffman Compressor</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;700;800&display=swap"
+        rel="stylesheet" />
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #e8f5e9;
+            --surface: #ffffff;
+            --surface2: #f1f8e9;
+            --border: #ffffff;
+            --accent: #2e7d32;
+            --accent2: #c62828;
+            --text: #1b1b1b;
+            --muted: #6b7280;
+            --green: #388e3c;
+            --mono: 'DM Mono', monospace;
+            --sans: 'Syne', sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--sans);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0 1rem 4rem;
+            overflow-x: hidden;
+        }
+
+        /* dot pattern bg */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: radial-gradient(circle, rgba(46, 125, 50, 0.06) 1px, transparent 1px);
+            background-size: 28px 28px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        header {
+            width: 100%;
+            max-width: 740px;
+            padding: 3.5rem 0 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .tag {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--accent);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tag::before {
+            content: '';
+            display: inline-block;
+            width: 18px;
+            height: 1px;
+            background: var(--accent);
+        }
+
+        h1 {
+            font-size: clamp(2.2rem, 5vw, 3.4rem);
+            font-weight: 800;
+            line-height: 1.05;
+            letter-spacing: -0.03em;
+            margin-bottom: 0.75rem;
+        }
+
+        h1 span {
+            color: var(--accent);
+        }
+
+        .subtitle {
+            font-family: var(--mono);
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 740px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            position: relative;
+            z-index: 1;
+            margin-bottom: 1.25rem;
+        }
+
+        .card-title {
+            font-family: var(--mono);
+            font-size: 11px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* Mode toggle */
+        .mode-toggle {
+            display: flex;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 4px;
+            margin-bottom: 1.75rem;
+            width: fit-content;
+        }
+
+        .mode-btn {
+            font-family: var(--mono);
+            font-size: 12px;
+            padding: 7px 20px;
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+            background: transparent;
+            color: var(--muted);
+            transition: all 0.2s;
+            letter-spacing: 0.05em;
+        }
+
+        .mode-btn.active {
+            background: var(--accent);
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(46, 125, 50, 0.25);
+        }
+
+        /* Drop zone */
+        .dropzone {
+            border: 1.5px dashed var(--border);
+            border-radius: 12px;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.25s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dropzone:hover,
+        .dropzone.drag-over {
+            border-color: var(--accent);
+            background: rgba(46, 125, 50, 0.04);
+        }
+
+        .dropzone.has-file {
+            border-color: var(--green);
+            border-style: solid;
+            background: rgba(56, 142, 60, 0.06);
+        }
+
+        .drop-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 1rem;
+            opacity: 0.5;
+        }
+
+        .dropzone.has-file .drop-icon {
+            opacity: 1;
+        }
+
+        .drop-main {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 0.4rem;
+            color: var(--text);
+        }
+
+        .drop-sub {
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .drop-filename {
+            font-family: var(--mono);
+            font-size: 13px;
+            color: var(--green);
+            margin-top: 0.6rem;
+            font-weight: 500;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Run button */
+        .run-btn {
+            width: 100%;
+            padding: 15px;
+            margin-top: 1.5rem;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-family: var(--sans);
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .run-btn:hover:not(:disabled) {
+            background: #388e3c;
+            box-shadow: 0 4px 16px rgba(46, 125, 50, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .run-btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .run-btn.loading::after {
+            content: '';
+            position: absolute;
+            left: -100%;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+            animation: shimmer 1.2s infinite;
+        }
+
+        @keyframes shimmer {
+            to {
+                left: 100%;
+            }
+        }
+
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-box {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem;
+        }
+
+        .stat-label {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-family: var(--mono);
+            font-size: 20px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .stat-value.accent {
+            color: var(--accent);
+        }
+
+        .stat-value.green {
+            color: var(--green);
+        }
+
+        .stat-value.red {
+            color: var(--accent2);
+        }
+
+        /* Progress bar */
+        .progress-bar {
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--green));
+            border-radius: 2px;
+            transition: width 0.4s ease;
+            width: 0%;
+        }
+
+        /* Download button */
+        .dl-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 14px;
+            background: transparent;
+            border: 1.5px solid var(--green);
+            border-radius: 10px;
+            color: var(--green);
+            font-family: var(--sans);
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .dl-btn:hover {
+            background: rgba(46, 125, 50, 0.06);
+            box-shadow: 0 4px 16px rgba(46, 125, 50, 0.15);
+        }
+
+        /* Frequency chart */
+        .freq-chart {
+            display: flex;
+            align-items: flex-end;
+            gap: 3px;
+            height: 60px;
+            margin-top: 1rem;
+        }
+
+        .freq-bar {
+            flex: 1;
+            background: var(--accent);
+            border-radius: 2px 2px 0 0;
+            opacity: 0.6;
+            transition: height 0.4s ease, opacity 0.2s;
+            min-width: 4px;
+        }
+
+        .freq-bar:hover {
+            opacity: 1;
+        }
+
+        .error-msg {
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--accent2);
+            background: rgba(198, 40, 40, 0.06);
+            border: 1px solid rgba(198, 40, 40, 0.2);
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-top: 1rem;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .glow-dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+
+            margin-right: 6px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+        }
+
+        footer {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 2rem;
+            z-index: 1;
+        }
+        /* Bit comparison */
+        .bit-card { margin-bottom: 1.25rem; }
+        .bit-section { margin-bottom: 1.25rem; }
+        .bit-section-title {
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .bit-section-title .dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .dot-orig { background: var(--muted); }
+        .dot-comp { background: var(--accent); }
+        .bit-box {
+            background: var(--surface2);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px;
+            font-family: var(--mono);
+            font-size: 12px;
+            line-height: 1.8;
+            word-break: break-all;
+            max-height: 160px;
+            overflow-y: auto;
+            color: var(--text);
+        }
+        .bit-box .b0 { color: var(--muted); }
+        .bit-box .b1 { color: var(--accent); font-weight: 600; }
+        .bit-box .byte-sep { color: var(--border2); margin: 0 1px; }
+        .bit-summary {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 6px;
+        }
+        .bit-summary strong { color: var(--text); font-weight: 600; }
+        .huffman-codes-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: var(--mono);
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        .huffman-codes-table th {
+            text-align: left;
+            padding: 6px 10px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+            border-bottom: 2px solid var(--border2);
+        }
+        .huffman-codes-table td {
+            padding: 5px 10px;
+            border-bottom: 1px solid var(--border2);
+            color: var(--text);
+        }
+        .huffman-codes-table .code-col { color: var(--accent); font-weight: 500; }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="tag">Lossless Compression Engine</div>
+        <h1>Huffman<br /><span>Compressor</span></h1>
+        <p class="subtitle">Entropy coding via binary prefix trees &mdash; runs entirely in your browser.</p>
+    </header>
+
+    <!-- Input card -->
+    <div class="card" id="input-card">
+        <div class="card-title">01 &mdash; Configure</div>
+
+        <div class="mode-toggle">
+            <button class="mode-btn active" id="btn-compress" onclick="setMode('compress')">Compress</button>
+            <button class="mode-btn" id="btn-decompress" onclick="setMode('decompress')">Decompress</button>
+        </div>
+
+        <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()"
+            ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+            <svg class="drop-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="8" y="6" width="32" height="36" rx="4" stroke="#2e7d32" stroke-width="2" />
+                <path d="M16 18h16M16 24h16M16 30h10" stroke="#2e7d32" stroke-width="2" stroke-linecap="round" />
+                <circle cx="36" cy="36" r="8" fill="#ffffff" stroke="#388e3c" stroke-width="2" />
+                <path d="M33 36l2 2 4-4" stroke="#388e3c" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round" />
+            </svg>
+            <div class="drop-main" id="drop-main">Drop file here or click to browse</div>
+            <div class="drop-sub" id="drop-sub">Any file type &bull; No size limit</div>
+            <div class="drop-filename hidden" id="drop-filename"></div>
+        </div>
+
+        <input type="file" id="file-input" onchange="onFileSelect(event)" />
+
+        <div class="error-msg hidden" id="error-msg"></div>
+
+        <button class="run-btn" id="run-btn" disabled onclick="run()">
+            <span id="run-label">Select a file first</span>
+        </button>
+    </div>
+
+    <!-- Bit Comparison card (hidden until compression done) -->
+    <div class="card hidden" id="bit-card">
+        <div class="card-title">Bit Comparison &mdash; Before vs After</div>
+
+        <div class="bit-section">
+            <div class="bit-section-title"><span class="dot dot-orig"></span>Original Bits (first 512 bytes)</div>
+            <div class="bit-box" id="bits-original"></div>
+            <div class="bit-summary" id="bits-orig-summary"></div>
+        </div>
+
+        <div class="bit-section">
+            <div class="bit-section-title"><span class="dot dot-comp"></span>Compressed Bits (first 512 bytes)</div>
+            <div class="bit-box" id="bits-compressed"></div>
+            <div class="bit-summary" id="bits-comp-summary"></div>
+        </div>
+
+        <div class="bit-section">
+            <div class="bit-section-title"><span class="dot dot-comp"></span>Huffman Code Table (top 20 chars)</div>
+            <div id="huffman-codes-wrap"></div>
+        </div>
+    </div>
+    <!-- Output card (hidden until done) -->
+    <div class="card hidden" id="output-card">
+        <div class="card-title"><span class="glow-dot"></span>02 &mdash; Result</div>
+
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-label">Original</div>
+                <div class="stat-value" id="stat-orig">—</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Output</div>
+                <div class="stat-value accent" id="stat-out">—</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Ratio</div>
+                <div class="stat-value" id="stat-ratio">—</div>
+            </div>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+
+        <a class="dl-btn" id="dl-btn" href="#" download>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            <span id="dl-label">Download</span>
+        </a>
+
+        <div id="freq-section" class="hidden" style="margin-top:1.5rem;">
+            <div class="card-title" style="margin-bottom:0.75rem;">Byte frequency distribution</div>
+            <div class="freq-chart" id="freq-chart"></div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px;">Top 64 most frequent
+                bytes (each bar = 1 unique byte value)</div>
+        </div>
+    </div>
+
+    <footer>huffman.js &mdash; pure browser implementation &bull; no server &bull; no upload</footer>
+
+    <script>
+        // ─── State ────────────────────────────────────────────────────────────────────
+        let mode = 'compress';
+        let selectedFile = null;
+
+        function setMode(m) {
+            mode = m;
+            document.getElementById('btn-compress').classList.toggle('active', m === 'compress');
+            document.getElementById('btn-decompress').classList.toggle('active', m === 'decompress');
+            clearFile();
+        }
+
+        // ─── File selection ───────────────────────────────────────────────────────────
+        function onFileSelect(e) { handleFile(e.target.files[0]); }
+        function onDragOver(e) { e.preventDefault(); document.getElementById('dropzone').classList.add('drag-over'); }
+        function onDragLeave(e) { document.getElementById('dropzone').classList.remove('drag-over'); }
+        function onDrop(e) {
+            e.preventDefault();
+            document.getElementById('dropzone').classList.remove('drag-over');
+            if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+        }
+
+        function handleFile(file) {
+            if (!file) return;
+            selectedFile = file;
+            const dz = document.getElementById('dropzone');
+            dz.classList.add('has-file');
+            document.getElementById('drop-main').textContent = 'File selected';
+            document.getElementById('drop-sub').textContent = formatBytes(file.size);
+            const fn = document.getElementById('drop-filename');
+            fn.textContent = file.name;
+            fn.classList.remove('hidden');
+            const btn = document.getElementById('run-btn');
+            btn.disabled = false;
+            document.getElementById('run-label').textContent =
+                mode === 'compress' ? `Compress "${file.name}"` : `Decompress "${file.name}"`;
+            hideError();
+            document.getElementById('output-card').classList.add('hidden');
+            document.getElementById('bit-card').classList.add('hidden');
+        }
+
+        function clearFile() {
+            selectedFile = null;
+            document.getElementById('dropzone').classList.remove('has-file');
+            document.getElementById('drop-main').textContent = 'Drop file here or click to browse';
+            document.getElementById('drop-sub').textContent = 'Any file type \u2022 No size limit';
+            document.getElementById('drop-filename').classList.add('hidden');
+            document.getElementById('run-btn').disabled = true;
+            document.getElementById('run-label').textContent = 'Select a file first';
+            document.getElementById('output-card').classList.add('hidden');
+            document.getElementById('bit-card').classList.add('hidden');
+            document.getElementById('file-input').value = '';
+        }
+
+        // ─── Main run ─────────────────────────────────────────────────────────────────
+        async function run() {
+            hideError();
+            const btn = document.getElementById('run-btn');
+            btn.disabled = true;
+            btn.classList.add('loading');
+            document.getElementById('run-label').textContent = 'Processing…';
+
+            try {
+                const buf = await selectedFile.arrayBuffer();
+                const input = new Uint8Array(buf);
+
+                let result, outName;
+                if (mode === 'compress') {
+                    result = huffmanCompress(input);
+                    outName = selectedFile.name + '.huff';
+                    showFreqChart(input);
+                } else {
+                    result = huffmanDecompress(input);
+                    outName = selectedFile.name.replace(/\.huff$/, '') || selectedFile.name + '.out';
+                    document.getElementById('freq-section').classList.add('hidden');
+                }
+
+                const origSize = input.length;
+                const outSize = result.length;
+                const ratio = origSize > 0 ? ((1 - outSize / origSize) * 100) : 0;
+
+                document.getElementById('stat-orig').textContent = formatBytes(origSize);
+                document.getElementById('stat-out').textContent = formatBytes(outSize);
+
+                const ratioEl = document.getElementById('stat-ratio');
+                if (mode === 'compress') {
+                    ratioEl.textContent = (ratio >= 0 ? '-' : '+') + Math.abs(ratio).toFixed(1) + '%';
+                    ratioEl.className = 'stat-value ' + (ratio >= 0 ? 'green' : 'red');
+                } else {
+                    ratioEl.textContent = '+' + Math.abs(ratio).toFixed(1) + '%';
+                    ratioEl.className = 'stat-value accent';
+                }
+
+                document.getElementById('progress-fill').style.width =
+                    mode === 'compress' ? Math.max(0, ratio) + '%' : '100%';
+
+                // Create download link
+                const blob = new Blob([result]);
+                const url = URL.createObjectURL(blob);
+                const dlBtn = document.getElementById('dl-btn');
+                dlBtn.href = url;
+                dlBtn.download = outName;
+                document.getElementById('dl-label').textContent = `Download ${outName} (${formatBytes(outSize)})`;
+
+                document.getElementById('output-card').classList.remove('hidden');
+                document.getElementById('output-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                // Show bit comparison
+                showBitComparison(input, result);
+
+            } catch (err) {
+                showError(err.message || String(err));
+            }
+
+            btn.disabled = false;
+            btn.classList.remove('loading');
+            document.getElementById('run-label').textContent =
+                mode === 'compress' ? `Compress "${selectedFile.name}"` : `Decompress "${selectedFile.name}"`;
+        }
+
+        // ─── Huffman Compress ─────────────────────────────────────────────────────────
+        function huffmanCompress(data) {
+            if (data.length === 0) throw new Error('Input file is empty.');
+
+            // 1. Frequency table
+            const freq = new Uint32Array(256);
+            for (let i = 0; i < data.length; i++) freq[data[i]]++;
+
+            // 2. Build priority queue (min-heap)
+            // Node: { ch, freq, left, right }
+            const nodes = [];
+            for (let i = 0; i < 256; i++) {
+                if (freq[i] > 0) nodes.push({ ch: i, freq: freq[i], left: null, right: null });
+            }
+
+            const heap = new MinHeap((a, b) => a.freq - b.freq);
+            for (const n of nodes) heap.push(n);
+
+            if (heap.size() === 1) {
+                const only = heap.pop();
+                heap.push({ ch: 0, freq: only.freq, left: only, right: null });
+            }
+
+            while (heap.size() > 1) {
+                const l = heap.pop();
+                const r = heap.pop();
+                heap.push({ ch: 0, freq: l.freq + r.freq, left: l, right: r });
+            }
+            const root = heap.pop();
+
+            // 3. Generate codes
+            const codes = new Array(256).fill('');
+            (function gen(node, prefix) {
+                if (!node) return;
+                if (!node.left && !node.right) { codes[node.ch] = prefix || '0'; return; }
+                gen(node.left, prefix + '0');
+                gen(node.right, prefix + '1');
+            })(root, '');
+
+            // 4. Encode data to bit string
+            let encoded = '';
+            for (let i = 0; i < data.length; i++) encoded += codes[data[i]];
+
+            // 5. Serialize tree to bits
+            const treeBits = [];
+            (function serTree(node) {
+                if (!node.left && !node.right) {
+                    treeBits.push(1);
+                    for (let i = 7; i >= 0; i--) treeBits.push((node.ch >> i) & 1);
+                    return;
+                }
+                treeBits.push(0);
+                serTree(node.left);
+                if (node.right) serTree(node.right);
+            })(root);
+
+            // 6. Pack into bytes
+            // Format: [8 bytes origSize big-endian] [tree bits] [3-bit padding count] [flush byte] [encoded bytes]
+            const origSize = data.length;
+            const outBytes = [];
+
+            // Write origSize (8 bytes)
+            for (let i = 7; i >= 0; i--) outBytes.push((origSize / Math.pow(256, i)) & 0xFF >>> 0);
+
+            // Write tree + padding-count (3 bits) into bytes using a BitStream
+            const headerBits = [...treeBits];
+            const padding = (8 - (encoded.length % 8)) % 8;
+            for (let i = 2; i >= 0; i--) headerBits.push((padding >> i) & 1);
+
+            // Flush header bits to bytes
+            while (headerBits.length % 8 !== 0) headerBits.push(0);
+            for (let i = 0; i < headerBits.length; i += 8) {
+                let byte = 0;
+                for (let j = 0; j < 8; j++) byte = (byte << 1) | headerBits[i + j];
+                outBytes.push(byte);
+            }
+
+            // Write encoded data bytes
+            for (let i = 0; i < encoded.length; i += 8) {
+                let byte = 0;
+                for (let j = 0; j < 8; j++) {
+                    byte <<= 1;
+                    if (i + j < encoded.length) byte |= (encoded[i + j] === '1' ? 1 : 0);
+                }
+                outBytes.push(byte);
+            }
+
+            return new Uint8Array(outBytes);
+        }
+
+        // ─── Huffman Decompress ───────────────────────────────────────────────────────
+        function huffmanDecompress(data) {
+            if (data.length < 8) throw new Error('File too small — not a valid .huff file.');
+
+            // Read origSize (8 bytes big-endian)
+            let origSize = 0;
+            for (let i = 0; i < 8; i++) origSize = origSize * 256 + data[i];
+
+            // Bit reader over the rest
+            let bytePos = 8, bitPos = 7;
+
+            function readBit() {
+                if (bytePos >= data.length) throw new Error('Unexpected end of file.');
+                const bit = (data[bytePos] >> bitPos) & 1;
+                if (--bitPos < 0) { bitPos = 7; bytePos++; }
+                return bit;
+            }
+
+            function skipToNextByte() {
+                if (bitPos !== 7) { bytePos++; bitPos = 7; }
+            }
+
+            // Deserialize tree
+            function deserTree() {
+                const flag = readBit();
+                if (flag === 1) {
+                    let ch = 0;
+                    for (let i = 0; i < 8; i++) ch = (ch << 1) | readBit();
+                    return { ch, left: null, right: null };
+                }
+                const l = deserTree();
+                const r = deserTree();
+                return { ch: 0, left: l, right: r };
+            }
+
+            const root = deserTree();
+
+            // Read padding (3 bits)
+            let padding = 0;
+            for (let i = 0; i < 3; i++) padding = (padding << 1) | readBit();
+
+            // Skip to next byte boundary (flush)
+            skipToNextByte();
+
+            // Decode encoded bytes
+            const out = new Uint8Array(origSize);
+            let written = 0;
+            let cur = root;
+            const encodedStart = bytePos;
+            const encodedBytes = data.slice(encodedStart);
+
+            for (let bi = 0; bi < encodedBytes.length && written < origSize; bi++) {
+                const bitsInByte = (bi === encodedBytes.length - 1) ? (8 - padding) : 8;
+                for (let i = 7; i >= 8 - bitsInByte && written < origSize; i--) {
+                    const bit = (encodedBytes[bi] >> i) & 1;
+                    cur = bit ? cur.right : cur.left;
+                    if (!cur) throw new Error('Corrupt compressed data. Is this really a .huff file?');
+                    if (!cur.left && !cur.right) {
+                        out[written++] = cur.ch;
+                        cur = root;
+                    }
+                }
+            }
+
+            if (written !== origSize) throw new Error(`Decompressed ${written} bytes, expected ${origSize}.`);
+            return out;
+        }
+
+        // ─── Min Heap ─────────────────────────────────────────────────────────────────
+        class MinHeap {
+            constructor(cmp) { this.data = []; this.cmp = cmp; }
+            size() { return this.data.length; }
+            push(v) {
+                this.data.push(v);
+                let i = this.data.length - 1;
+                while (i > 0) {
+                    const p = (i - 1) >> 1;
+                    if (this.cmp(this.data[i], this.data[p]) < 0) {
+                        [this.data[i], this.data[p]] = [this.data[p], this.data[i]]; i = p;
+                    } else break;
+                }
+            }
+            pop() {
+                const top = this.data[0];
+                const last = this.data.pop();
+                if (this.data.length) {
+                    this.data[0] = last;
+                    let i = 0;
+                    while (true) {
+                        let s = i, l = 2 * i + 1, r = 2 * i + 2;
+                        if (l < this.data.length && this.cmp(this.data[l], this.data[s]) < 0) s = l;
+                        if (r < this.data.length && this.cmp(this.data[r], this.data[s]) < 0) s = r;
+                        if (s !== i) { [this.data[i], this.data[s]] = [this.data[s], this.data[i]]; i = s; }
+                        else break;
+                    }
+                }
+                return top;
+            }
+        }
+
+        // ─── Helpers ──────────────────────────────────────────────────────────────────
+        function formatBytes(n) {
+            if (n === 0) return '0 B';
+            const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(n) / Math.log(k));
+            return parseFloat((n / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('error-msg');
+            el.textContent = 'Error: ' + msg;
+            el.classList.remove('hidden');
+        }
+
+        function hideError() {
+            document.getElementById('error-msg').classList.add('hidden');
+        }
+
+        function showFreqChart(data) {
+            const freq = new Uint32Array(256);
+            for (let i = 0; i < data.length; i++) freq[data[i]]++;
+
+            const sorted = Array.from(freq).map((f, i) => ({ f, i }))
+                .filter(x => x.f > 0)
+                .sort((a, b) => b.f - a.f)
+                .slice(0, 64);
+
+            const max = sorted[0]?.f || 1;
+            const chart = document.getElementById('freq-chart');
+            chart.innerHTML = '';
+            for (const { f } of sorted) {
+                const bar = document.createElement('div');
+                bar.className = 'freq-bar';
+                bar.style.height = Math.max(4, (f / max) * 60) + 'px';
+                chart.appendChild(bar);
+            }
+            document.getElementById('freq-section').classList.remove('hidden');
+        }
+
+        // ─── Bit Comparison Display ───────────────────────────────────────────────────
+        function bytesToBitHTML(arr, maxBytes) {
+            const limit = Math.min(arr.length, maxBytes);
+            let html = '';
+            for (let i = 0; i < limit; i++) {
+                for (let b = 7; b >= 0; b--) {
+                    const bit = (arr[i] >> b) & 1;
+                    html += `<span class="b${bit}">${bit}</span>`;
+                }
+                if (i < limit - 1) html += '<span class="byte-sep">|</span>';
+            }
+            if (arr.length > maxBytes) html += '<span class="byte-sep"> ...</span>';
+            return html;
+        }
+
+        function showBitComparison(original, compressed) {
+            const bitCard = document.getElementById('bit-card');
+            bitCard.classList.remove('hidden');
+
+            // Original bits
+            document.getElementById('bits-original').innerHTML = bytesToBitHTML(original, 512);
+            document.getElementById('bits-orig-summary').innerHTML =
+                `Total: <strong>${original.length}</strong> bytes = <strong>${original.length * 8}</strong> bits`;
+
+            // Compressed bits
+            document.getElementById('bits-compressed').innerHTML = bytesToBitHTML(compressed, 512);
+            document.getElementById('bits-comp-summary').innerHTML =
+                `Total: <strong>${compressed.length}</strong> bytes = <strong>${compressed.length * 8}</strong> bits &mdash; ` +
+                `<strong>${((1 - compressed.length / original.length) * 100).toFixed(1)}%</strong> smaller`;
+
+            // Build Huffman code table (only in compress mode)
+            const wrap = document.getElementById('huffman-codes-wrap');
+            if (mode === 'compress') {
+                const freq = new Uint32Array(256);
+                for (let i = 0; i < original.length; i++) freq[original[i]]++;
+
+                // Rebuild tree to get codes
+                const nodes = [];
+                for (let i = 0; i < 256; i++) {
+                    if (freq[i] > 0) nodes.push({ ch: i, freq: freq[i], left: null, right: null });
+                }
+                const heap = new MinHeap((a, b) => a.freq - b.freq);
+                for (const n of nodes) heap.push(n);
+                if (heap.size() === 1) {
+                    const only = heap.pop();
+                    heap.push({ ch: 0, freq: only.freq, left: only, right: null });
+                }
+                while (heap.size() > 1) {
+                    const l = heap.pop(), r = heap.pop();
+                    heap.push({ ch: 0, freq: l.freq + r.freq, left: l, right: r });
+                }
+                const root = heap.pop();
+                const codes = {};
+                (function gen(node, prefix) {
+                    if (!node) return;
+                    if (!node.left && !node.right) { codes[node.ch] = prefix || '0'; return; }
+                    gen(node.left, prefix + '0');
+                    gen(node.right, prefix + '1');
+                })(root, '');
+
+                // Sort by frequency, take top 20
+                const entries = Object.entries(codes)
+                    .map(([ch, code]) => ({ ch: parseInt(ch), code, freq: freq[parseInt(ch)] }))
+                    .sort((a, b) => b.freq - a.freq)
+                    .slice(0, 20);
+
+                let tableHTML = '<table class="huffman-codes-table"><thead><tr>' +
+                    '<th>Char</th><th>ASCII</th><th>Freq</th><th>Original (8-bit)</th><th>Huffman Code</th><th>Bits Saved</th>' +
+                    '</tr></thead><tbody>';
+                for (const e of entries) {
+                    const ch = e.ch >= 33 && e.ch <= 126 ? String.fromCharCode(e.ch) : '·';
+                    const saved = 8 - e.code.length;
+                    const savedClass = saved > 0 ? 'green' : (saved < 0 ? 'red' : '');
+                    const savedSign = saved > 0 ? '+' : '';
+                    tableHTML += `<tr>` +
+                        `<td>${ch}</td>` +
+                        `<td>${e.ch}</td>` +
+                        `<td>${e.freq}</td>` +
+                        `<td>` + e.ch.toString(2).padStart(8, '0') + `</td>` +
+                        `<td class="code-col">${e.code}</td>` +
+                        `<td style="color:var(--${saved >= 0 ? 'green' : 'accent2'})">${savedSign}${saved}</td>` +
+                        `</tr>`;
+                }
+                tableHTML += '</tbody></table>';
+                wrap.innerHTML = tableHTML;
+            } else {
+                wrap.innerHTML = '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);">Code table available in compress mode only.</div>';
+            }
+        }
+    </script>
+</body>
+
+</html>
